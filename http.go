@@ -59,7 +59,7 @@ func HttpRequest(method string, url string, data interface{}) ([]byte, error) {
 	//	return nil, err
 	//}
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprint(body))
+		return nil, errors.New(string(body))
 	}
 	return body, err
 }
