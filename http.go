@@ -23,6 +23,13 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+// URLAddQuery 提供一个URL，然后添加query参数
+func URLAddQuery(addr *url.URL, key, value string) {
+	query := addr.Query()
+	query.Add(key, value)
+	addr.RawQuery = query.Encode()
+}
+
 func HttpRequest(method string, url string, data interface{}) ([]byte, error) {
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
 	client := &http.Client{}
