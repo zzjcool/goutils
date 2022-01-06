@@ -46,7 +46,10 @@ func HttpRequest(method string, url string, data interface{}) ([]byte, error) {
 		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 	}
 	client.Transport = transport
-	bytesData, _ := json.Marshal(data)
+	bytesData, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
 	req, _ := http.NewRequest(method, url, bytes.NewReader(bytesData))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
