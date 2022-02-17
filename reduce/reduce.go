@@ -17,7 +17,7 @@ type Reduce interface {
 // HandleFunc 进行批处理的操作
 // refreshMillisecond 刷新缓存处理的间隔毫秒
 // maxSize 最大缓存大小
-func NewReduce(do HandleFunc, refreshMillisecond int64, maxSize int64) Reduce {
+func New(do HandleFunc, refreshMillisecond int64, maxSize int64) Reduce {
 
 	reduce := &ReduceImple{
 		ticker:    time.NewTicker(time.Duration(refreshMillisecond)),
