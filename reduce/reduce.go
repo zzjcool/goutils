@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/zzjcool/goutils/castwait"
 )
 
-type HandleFunc func(datas []interface{})
+type HandleFunc func(datas []interface{}) error
 
-type Reduce interface {
-	Add(data interface{})
+type ReduceWait interface {
+	Wait() error
+}
+type Interface interface {
+	Add(data interface{}) ReduceWait
 	Destroy()
 }
 
@@ -17,77 +22,88 @@ type Reduce interface {
 // HandleFunc 进行批处理的操作
 // refreshMillisecond 刷新缓存处理的间隔毫秒
 // maxSize 最大缓存大小
-func New(do HandleFunc, refreshMillisecond int64, maxSize int64) Reduce {
+func New(do HandleFunc, refreshMillisecond int, maxSize int) Interface {
 
 	reduce := &ReduceImple{
-		ticker:    time.NewTicker(time.Duration(refreshMillisecond)),
-		refreshCh: make(chan bool),
-		cleanCh:   make(chan bool),
-		maxSize:   maxSize,
-		mu:        sync.Mutex{},
-		cache:     make([]interface{}, 0, maxSize),
-		do:        do,
+		ticker:      time.NewTicker(time.Millisecond * time.Duration(refreshMillisecond)),
+		cleanCh:     make(chan bool),
+		maxSize:     maxSize,
+		addLock:     sync.Mutex{},
+		refreshLock: sync.RWMutex{},
+		cache:       []interface{}{},
+		do:          do,
+		cw:          castwait.New(),
 	}
 	go reduce.daemon()
 	return reduce
 }
 
 type ReduceImple struct {
-	ticker    *time.Ticker
-	refreshCh chan bool
-	cleanCh   chan bool
-	maxSize   int64
-	mu        sync.Mutex
-	cache     []interface{}
-	do        HandleFunc
+	ticker      *time.Ticker
+	cleanCh     chan bool
+	maxSize     int
+	addLock     sync.Mutex
+	refreshLock sync.RWMutex
+	cache       []interface{}
+	do          HandleFunc
+	cw          castwait.Interface
 }
 
 // daemon 负责处理接收的channel消息
 func (r *ReduceImple) daemon() {
 	for {
 		select {
-		// 调用refresh
-		case <-r.refreshCh:
 		// 定时操作
 		case <-r.ticker.C:
-			r.refresh()
-		case _, ok := <-r.cleanCh:
-			if !ok {
-				fmt.Println("daemon stop")
+			{
+				fmt.Println("ticker")
+				r.refresh()
 			}
-			return
+		// 关闭清理
+		case <-r.cleanCh:
+			{
+				return
+			}
 		}
 	}
 }
 
 // refresh 刷新cache中所有的数据，将数据进行批量消费
 func (r *ReduceImple) refresh() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.refreshLock.Lock()
+	defer r.refreshLock.Unlock()
 	// 如果没有数据不做任何操作
 	if len(r.cache) == 0 {
 		return
 	}
-	r.do(r.cache)
+	err := r.do(r.cache)
 	r.cache = r.cache[:0]
+	r.cw.Done(err)
+	// 刷新cond
+	r.cw = castwait.New()
+}
+
+// Add 向缓存中增加数据
+func (r *ReduceImple) Add(data interface{}) ReduceWait {
+	r.addLock.Lock()
+	defer r.addLock.Unlock()
+	// 读锁保证只上了一把，如果此时正在refresh操作则等待。
+	r.refreshLock.RLock()
+	// 需要提前获取到cond，避免refresh的时候被刷
+	wait := r.cw
+	r.cache = append(r.cache, data)
+	if len(r.cache) >= r.maxSize {
+		r.refreshLock.RUnlock()
+		r.refresh()
+		return wait
+	}
+	r.refreshLock.RUnlock()
+	return wait
 }
 
 // Destroy 销毁Reduce
 func (r *ReduceImple) Destroy() {
-	r.ticker.Stop()
-	close(r.refreshCh)
-	r.refresh()
 	close(r.cleanCh)
-}
-
-// Add 向缓存中增加数据
-func (r *ReduceImple) Add(data interface{}) {
-	r.mu.Lock()
-	r.cache = append(r.cache, data)
-	if len(r.cache) >= int(r.maxSize) {
-		r.mu.Unlock()
-		r.refresh()
-		return
-	}
-	r.mu.Unlock()
+	r.ticker.Stop()
+	r.refresh()
 }
