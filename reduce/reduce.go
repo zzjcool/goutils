@@ -25,28 +25,30 @@ type Interface interface {
 func New(do HandleFunc, refreshMillisecond int, maxSize int) Interface {
 
 	reduce := &ReduceImple{
-		ticker:      time.NewTicker(time.Millisecond * time.Duration(refreshMillisecond)),
-		cleanCh:     make(chan bool),
-		maxSize:     maxSize,
-		addLock:     sync.Mutex{},
-		refreshLock: sync.RWMutex{},
-		cache:       []interface{}{},
-		do:          do,
-		cw:          castwait.New(),
+		refreshDuration: time.Millisecond * time.Duration(refreshMillisecond),
+		ticker:          time.NewTicker(time.Millisecond * time.Duration(refreshMillisecond)),
+		cleanCh:         make(chan bool),
+		maxSize:         maxSize,
+		addLock:         sync.Mutex{},
+		refreshLock:     sync.RWMutex{},
+		cache:           []interface{}{},
+		do:              do,
+		cw:              castwait.New(),
 	}
 	go reduce.daemon()
 	return reduce
 }
 
 type ReduceImple struct {
-	ticker      *time.Ticker
-	cleanCh     chan bool
-	maxSize     int
-	addLock     sync.Mutex
-	refreshLock sync.RWMutex
-	cache       []interface{}
-	do          HandleFunc
-	cw          castwait.Interface
+	ticker          *time.Ticker
+	refreshDuration time.Duration
+	cleanCh         chan bool
+	maxSize         int
+	addLock         sync.Mutex
+	refreshLock     sync.RWMutex
+	cache           []interface{}
+	do              HandleFunc
+	cw              castwait.Interface
 }
 
 // daemon 负责处理接收的channel消息
@@ -78,6 +80,7 @@ func (r *ReduceImple) refresh() {
 	}
 	err := r.do(r.cache)
 	r.cache = r.cache[:0]
+	r.ticker.Reset(r.refreshDuration)
 	r.cw.Done(err)
 	// 刷新cond
 	r.cw = castwait.New()
