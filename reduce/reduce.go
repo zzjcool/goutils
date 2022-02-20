@@ -14,7 +14,11 @@ type ReduceWait interface {
 	Wait() error
 }
 type Interface interface {
+	// Add 增加一个数据
 	Add(data interface{}) ReduceWait
+	// 手动刷新缓存
+	Refresh()
+	// 清理
 	Destroy()
 }
 
@@ -51,7 +55,7 @@ type ReduceImple struct {
 	cw              castwait.Interface
 }
 
-// daemon 负责处理接收的channel消息
+// daemon 负责定时处理cache中积压的数据
 func (r *ReduceImple) daemon() {
 	for {
 		select {
@@ -59,7 +63,7 @@ func (r *ReduceImple) daemon() {
 		case <-r.ticker.C:
 			{
 				fmt.Println("ticker")
-				r.refresh()
+				r.Refresh()
 			}
 		// 关闭清理
 		case <-r.cleanCh:
@@ -70,8 +74,8 @@ func (r *ReduceImple) daemon() {
 	}
 }
 
-// refresh 刷新cache中所有的数据，将数据进行批量消费
-func (r *ReduceImple) refresh() {
+// Refresh 刷新cache中所有的数据，将数据进行批量消费
+func (r *ReduceImple) Refresh() {
 	r.refreshLock.Lock()
 	defer r.refreshLock.Unlock()
 	// 如果没有数据不做任何操作
@@ -97,7 +101,7 @@ func (r *ReduceImple) Add(data interface{}) ReduceWait {
 	r.cache = append(r.cache, data)
 	if len(r.cache) >= r.maxSize {
 		r.refreshLock.RUnlock()
-		r.refresh()
+		r.Refresh()
 		return wait
 	}
 	r.refreshLock.RUnlock()
@@ -108,5 +112,5 @@ func (r *ReduceImple) Add(data interface{}) ReduceWait {
 func (r *ReduceImple) Destroy() {
 	close(r.cleanCh)
 	r.ticker.Stop()
-	r.refresh()
+	r.Refresh()
 }
