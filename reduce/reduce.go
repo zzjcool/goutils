@@ -1,7 +1,6 @@
 package reduce
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -62,7 +61,6 @@ func (r *ReduceImple) daemon() {
 		// 定时操作
 		case <-r.ticker.C:
 			{
-				fmt.Println("ticker")
 				r.Refresh()
 			}
 		// 关闭清理
