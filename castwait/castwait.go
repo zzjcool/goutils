@@ -5,25 +5,25 @@ import (
 )
 
 type Interface interface {
+	// Wait 可以阻塞当前Groutine，直到Done被调用，可以获取到Done传入的error
 	Wait() error
+	// Done 解除所有Wait的阻塞，如果发生错误，将error传入
 	Done(err error)
 }
 
 // New 基于sync.WaitGroup实现
 func New() Interface {
 	c := &castWait{
-		done: false,
-		wg:   sync.WaitGroup{},
-		err:  nil,
+		wg:  sync.WaitGroup{},
+		err: nil,
 	}
 	c.wg.Add(1)
 	return c
 }
 
 type castWait struct {
-	done bool
-	wg   sync.WaitGroup
-	err  error
+	wg  sync.WaitGroup
+	err error // 保存调用的错误
 }
 
 // Wait 阻塞等待完成
