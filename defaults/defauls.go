@@ -95,7 +95,7 @@ func parseField(value reflect.Value, field reflect.StructField) error {
 	}
 
 	if !value.CanSet() {
-		return ErrorUnsettable(field.Name)
+		return nil
 	}
 
 	if !value.IsZero() {
