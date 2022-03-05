@@ -1,21 +1,30 @@
 package stream
 
 import (
+	"context"
 	"io"
-	"sync"
 )
 
 func Swap(up io.ReadWriter, dn io.ReadWriter) (err error) {
-	wg := sync.WaitGroup{}
-	wg.Add(2)
+	return SwapWithContext(context.Background(), up, dn)
+}
+
+func SwapWithContext(ctx context.Context, up io.ReadWriter, dn io.ReadWriter) (err error) {
+
+	done := make(chan bool, 1)
 	go func() {
-		defer wg.Done()
+		<-ctx.Done()
+		done <- true
+	}()
+	go func() {
+
 		_, err = io.Copy(up, dn)
+		done <- true
 	}()
 	go func() {
-		defer wg.Done()
 		_, err = io.Copy(dn, up)
+		done <- true
 	}()
-	wg.Wait()
+	<-done
 	return
 }
