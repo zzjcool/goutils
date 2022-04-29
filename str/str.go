@@ -2,6 +2,7 @@ package str
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 )
 
@@ -24,4 +25,10 @@ func BytesUint16(bs []byte) uint16 {
 // Uint16Bytes 获取uint16数值对应的byte数组
 func Uint16Bytes(u uint16) []byte {
 	return []byte{byte(u >> 8), byte(u)}
+}
+
+// Neat 整洁的输出
+func Neat(v interface{}) string {
+	b, _ := json.MarshalIndent(v, "", "  ")
+	return string(b)
 }

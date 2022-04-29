@@ -84,3 +84,42 @@ func TestBytesUint16(t *testing.T) {
 		})
 	}
 }
+
+func TestNeat(t *testing.T) {
+	type args struct {
+		v interface{}
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{{
+		name: "",
+		args: args{struct {
+			Test string
+			A    string
+			B    struct{ C string }
+		}{
+			Test: "test",
+			A:    "aa",
+			B: struct{ C string }{
+				C: "cc",
+			},
+		},
+		},
+		want: `{
+  "Test": "test",
+  "A": "aa",
+  "B": {
+    "C": "cc"
+  }
+}`,
+	}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Neat(tt.args.v); got != tt.want {
+				t.Errorf("Neat() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
