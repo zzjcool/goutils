@@ -1,6 +1,8 @@
 package easy
 
-import "time"
+import (
+	"time"
+)
 
 type cancel func()
 
@@ -15,4 +17,9 @@ func Tick(d time.Duration, f func()) cancel {
 	return func() {
 		t.Stop()
 	}
+}
+
+// P 获取结构体的指针
+func P[T any](val T) *T {
+	return &val
 }
