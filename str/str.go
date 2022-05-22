@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"sort"
 )
 
 func GetRandomString(n uint) string {
@@ -31,4 +32,20 @@ func Uint16Bytes(u uint16) []byte {
 func Neat(v interface{}) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return string(b)
+}
+
+// SortAndCompareStrs 对比两个字符串数组，并且排序
+func SortAndCompareStrs(strs1, strs2 []string) bool {
+	if len(strs1) != len(strs2) {
+		return false
+	}
+	sort.Strings(strs1)
+	sort.Strings(strs2)
+	for i, str1 := range strs1 {
+		str2 := strs2[i]
+		if str1 != str2 {
+			return false
+		}
+	}
+	return true
 }
