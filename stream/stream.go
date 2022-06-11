@@ -11,22 +11,13 @@ func Swap(up io.ReadWriter, dn io.ReadWriter) (err error) {
 }
 
 func SwapWithContext(ctx context.Context, up io.ReadWriter, dn io.ReadWriter) (err error) {
-
-	done := make(chan bool, 1)
 	go func() {
-		<-ctx.Done()
-		done <- true
-	}()
-	go func() {
-
 		_, err = io.Copy(up, dn)
-		done <- true
 	}()
 	go func() {
 		_, err = io.Copy(dn, up)
-		done <- true
 	}()
-	<-done
+	<-ctx.Done()
 	return
 }
 
