@@ -7,7 +7,9 @@ import (
 )
 
 func Swap(up io.ReadWriter, dn io.ReadWriter) (err error) {
-	return SwapWithContext(context.Background(), up, dn)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	return SwapWithContext(ctx, up, dn)
 }
 
 func SwapWithContext(ctx context.Context, up io.ReadWriter, dn io.ReadWriter) (err error) {
