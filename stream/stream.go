@@ -13,11 +13,15 @@ func Swap(up io.ReadWriter, dn io.ReadWriter) (err error) {
 }
 
 func SwapWithContext(ctx context.Context, up io.ReadWriter, dn io.ReadWriter) (err error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	go func() {
 		_, err = io.Copy(up, dn)
+		cancel()
 	}()
 	go func() {
 		_, err = io.Copy(dn, up)
+		cancel()
 	}()
 	<-ctx.Done()
 	return
