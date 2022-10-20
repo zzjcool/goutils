@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"path"
 	"sort"
 )
 
@@ -48,4 +51,17 @@ func SortAndCompareStrs(strs1, strs2 []string) bool {
 		}
 	}
 	return true
+}
+
+// TempFile 将data输出到临时文件中，并且返回文件名
+func TempFile(data string) string {
+	tempDir := "/tmp"
+	filename := GetRandomString(16)
+
+	filePath := path.Join(tempDir, filename)
+	if err := os.WriteFile(filePath, []byte(data), 0666); err != nil {
+		log.Fatal(err)
+	}
+
+	return filePath
 }

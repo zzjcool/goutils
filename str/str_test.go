@@ -1,6 +1,7 @@
 package str
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -122,4 +123,8 @@ func TestNeat(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTempFile(t *testing.T) {
+	fmt.Println(TempFile("ddddd"))
 }
