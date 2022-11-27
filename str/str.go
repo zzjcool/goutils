@@ -16,6 +16,11 @@ func GetRandomString(n uint) string {
 	return fmt.Sprintf("%x", randBytes)
 }
 
+func GetRandomBytes(n uint) []byte {
+	randBytes := make([]byte, n)
+	_, _ = rand.Read(randBytes)
+	return randBytes
+}
 // BytesUint16 获取bytes对应的uint16数值
 func BytesUint16(bs []byte) uint16 {
 	ret := uint16(0)
