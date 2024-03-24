@@ -131,3 +131,12 @@ func NewTest()  (l *zap.SugaredLogger){
 	conf.Director = ""
 	return New(conf)
 }
+
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Error(args ...interface{})
+	Panic(args ...interface{})
+	Debugf(template string, args ...interface{})
+	Infof(template string, args ...interface{})
+}
