@@ -17,7 +17,7 @@ var level zapcore.Level
 
 var logger *zap.Logger
 
-func New(conf *Log) (l *zap.SugaredLogger) {
+func New(conf *LogConf) (l *zap.SugaredLogger) {
 	defer func() {
 		zap.ReplaceGlobals(logger)
 	}()
@@ -54,7 +54,7 @@ func New(conf *Log) (l *zap.SugaredLogger) {
 }
 
 // getEncoderConfig 获取zapcore.EncoderConfig
-func getEncoderConfig(conf *Log) (config zapcore.EncoderConfig) {
+func getEncoderConfig(conf *LogConf) (config zapcore.EncoderConfig) {
 	config = zapcore.EncoderConfig{
 		MessageKey:     "message",
 		LevelKey:       "level",
@@ -84,7 +84,7 @@ func getEncoderConfig(conf *Log) (config zapcore.EncoderConfig) {
 }
 
 // getEncoder 获取zapcore.Encoder
-func getEncoder(conf *Log) zapcore.Encoder {
+func getEncoder(conf *LogConf) zapcore.Encoder {
 	if conf.Format == "json" {
 		return zapcore.NewJSONEncoder(getEncoderConfig(conf))
 	}
@@ -92,7 +92,7 @@ func getEncoder(conf *Log) zapcore.Encoder {
 }
 
 // getEncoderCore 获取Encoder的zapcore.Core
-func getEncoderCore(conf *Log) (core zapcore.Core) {
+func getEncoderCore(conf *LogConf) (core zapcore.Core) {
 	writer, err := goutils.GetWriteSyncer(conf.Director, conf.LogInConsole) // 使用file-rotatelogs进行日志分割
 	if err != nil {
 		fmt.Printf("Get Write Syncer Failed err:%v", err.Error())
@@ -102,7 +102,7 @@ func getEncoderCore(conf *Log) (core zapcore.Core) {
 }
 
 // 自定义日志输出时间格式
-func CustomTimeEncoder(conf *Log) func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+func CustomTimeEncoder(conf *LogConf) func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	return func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 		if conf.Prefix != "" {
 			enc.AppendString(conf.Prefix + ":")
@@ -112,7 +112,7 @@ func CustomTimeEncoder(conf *Log) func(t time.Time, enc zapcore.PrimitiveArrayEn
 }
 
 // 自定义日志路径
-func CustomCallerEncoder(conf *Log) func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+func CustomCallerEncoder(conf *LogConf) func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
 	return func(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
 		if conf.Trimmed {
 			enc.AppendString(caller.TrimmedPath())
@@ -123,7 +123,7 @@ func CustomCallerEncoder(conf *Log) func(caller zapcore.EntryCaller, enc zapcore
 }
 
 func NewTest()  (l *zap.SugaredLogger){
-	conf := new(Log)
+	conf := new(LogConf)
 	err := defaults.Apply(conf)
 	if err != nil {
 		panic(err)

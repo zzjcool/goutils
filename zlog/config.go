@@ -1,6 +1,6 @@
 package zlog
 
-type Log struct {
+type LogConf struct {
 	Director      string `default:"log" yaml:"director"`
 	Level         string `default:"debug" yaml:"level"`
 	ShowLine      bool   `default:"true" yaml:"showLine"`
