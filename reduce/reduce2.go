@@ -55,6 +55,30 @@ func (r *reduceOptions[I, O]) SetHandleFunc(do ReduceHandle[I, O]) *reduceOption
 	return r
 }
 
+type IO[I any, O any] struct {
+	Input  I
+	Output O
+}
+
+type IOs[I any, O any] []*IO[I, O]
+
+func (i IOs[I, O]) GetInputs(size int64) []I {
+	var inputs []I
+	if i == nil {
+		return inputs
+	}
+	for idx := int64(0); idx < size; idx++ {
+		inputs = append(inputs, i[idx].Input)
+	}
+	return inputs
+}
+
+func (i IOs[I, O]) SetOutputs(outputs []O) {
+	for idx := 0; idx < len(outputs); idx++ {
+		i[idx].Output = outputs[idx]
+	}
+}
+
 func (r *reduceOptions[I, O]) New() (Reduce[I, O], error) {
 
 	if r.handleFunc == nil {
@@ -64,11 +88,10 @@ func (r *reduceOptions[I, O]) New() (Reduce[I, O], error) {
 		refreshDuration: time.Millisecond * time.Duration(r.refreshMillisecond),
 		ticker:          time.NewTicker(time.Millisecond * time.Duration(r.refreshMillisecond)),
 		cleanCh:         make(chan bool),
-		maxSize:         r.maxSize,
+		maxSize:         int64(r.maxSize),
 		addLock:         sync.Mutex{},
 		refreshLock:     sync.RWMutex{},
-		cache:           []I{},
-		output:          []O{},
+		cache:           make(IOs[I, O], r.maxSize),
 		do:              r.handleFunc,
 		cw:              castwait.New(),
 		cnt:             new(int64),
@@ -81,11 +104,10 @@ type reduce[I any, O any] struct {
 	ticker          *time.Ticker
 	refreshDuration time.Duration
 	cleanCh         chan bool
-	maxSize         int
+	maxSize         int64
 	addLock         sync.Mutex
 	refreshLock     sync.RWMutex
-	cache           []I
-	output          []O
+	cache           IOs[I, O]
 	do              ReduceHandle[I, O]
 	cw              castwait.Interface
 	cnt             *int64
@@ -109,7 +131,7 @@ func (r *reduce[I, O]) daemon() {
 }
 
 // Do 向缓存中增加数据
-func (r *reduce[I, O]) Do(data I) (O, error) {
+func (r *reduce[I, O]) Do(input I) (O, error) {
 
 	r.addLock.Lock()
 
@@ -117,33 +139,34 @@ func (r *reduce[I, O]) Do(data I) (O, error) {
 	r.refreshLock.RLock()
 	// 需要提前获取到cond，避免refresh的时候被刷
 	wait := r.cw
-	i := *r.cnt
+
+	ioData := &IO[I, O]{
+		Input: input,
+	}
+	r.cache[*r.cnt] = ioData
 	atomic.AddInt64(r.cnt, 1)
-	r.cache = append(r.cache, data)
 
 	r.refreshLock.RUnlock()
-	if len(r.cache) >= r.maxSize {
+	if *r.cnt >= r.maxSize {
 		r.Refresh()
 	}
 	r.addLock.Unlock()
-	// FIXME: 这里有锁的问题
 	err := wait.Wait()
-	return r.output[i], err
+	return ioData.Output, err
 }
 
 func (r *reduce[I, O]) Refresh() {
 	r.refreshLock.Lock()
 	defer r.refreshLock.Unlock()
 	// 如果没有数据不做任何操作
-	if len(r.cache) == 0 {
+	if *r.cnt == 0 {
 		return
 	}
 	var err error
-	output, err := r.do(r.cache)
-	r.output = output
-	r.cache = r.cache[:0]
+	output, err := r.do(r.cache.GetInputs(*r.cnt))
+	r.cache.SetOutputs(output)
 
-	r.cnt = new(int64)
+	*r.cnt = 0
 	r.ticker.Reset(r.refreshDuration)
 	r.cw.Done(err)
 	// 刷新cond

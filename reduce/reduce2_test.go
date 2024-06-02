@@ -29,7 +29,7 @@ func Example() {
 
 }
 
-func TestReduce(t *testing.T) {
+func TestReduce2(t *testing.T) {
 
 	maxSize := 100
 	interval := 300
@@ -77,7 +77,7 @@ func TestReduce(t *testing.T) {
 }
 
 // TestInterval 测试间隔刷新
-func TestInterval(t *testing.T) {
+func TestInterval2(t *testing.T) {
 
 	maxSize := 100
 	interval := 300
@@ -125,6 +125,7 @@ func BenchmarkReduce2(b *testing.B) {
 		return
 	}
 
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		go reduce.Do(1)
 	}
