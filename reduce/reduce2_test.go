@@ -111,6 +111,31 @@ func TestInterval2(t *testing.T) {
 
 }
 
+func TestEmpty2(t *testing.T) {
+	interval := 300
+	empty := "empty"
+
+	reduce, err := reduce.Builder[string, string]().
+		SetMaxSize(100).
+		SetRefreshMillisecond(interval).
+		SetHandleFunc(func(datas []string) ([]string, error) {
+			result := make([]string, len(datas))
+			for i := 0; i < len(datas); i++ {
+				result[i] = "dd"
+			}
+			return result, nil
+		}).
+		SetEmpty(func(i string) bool { return i == "" }, empty).
+		New()
+
+	if err != nil {
+		return
+	}
+	out, err := reduce.Do("")
+	assert.NoError(t, err)
+	assert.Equal(t, empty, out)
+
+}
 func BenchmarkReduce2(b *testing.B) {
 
 	reduce, err := reduce.Builder[int, int]().

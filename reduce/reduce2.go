@@ -45,6 +45,8 @@ type reduceOptions[I, O any] struct {
 	maxSize            int
 	refreshMillisecond int
 	handleFunc         ReduceHandle[I, O]
+	isEmptyFunc        func(I) bool
+	emptyOutput        O
 }
 
 func Builder[I, O any]() *reduceOptions[I, O] {
@@ -73,28 +75,36 @@ func (r *reduceOptions[I, O]) SetHandleFunc(do ReduceHandle[I, O]) *reduceOption
 	return r
 }
 
+func (r *reduceOptions[I, O]) SetEmpty(isEmptyFunc func(I) bool, emptyOutput O) *reduceOptions[I, O] {
+	r.isEmptyFunc = isEmptyFunc
+	r.emptyOutput = emptyOutput
+	return r
+}
+
 func (i IOs[I, O]) SetOutputs(outputs []O) {
 	for idx := 0; idx < len(outputs); idx++ {
 		i[idx].Output = outputs[idx]
 	}
 }
 
-func (r *reduceOptions[I, O]) New() (Reduce[I, O], error) {
+func (ro *reduceOptions[I, O]) New() (Reduce[I, O], error) {
 
-	if r.handleFunc == nil {
+	if ro.handleFunc == nil {
 		return nil, errors.New("handleFunc is nil")
 	}
 	reduce := &reduce[I, O]{
-		refreshDuration: time.Millisecond * time.Duration(r.refreshMillisecond),
-		ticker:          time.NewTicker(time.Millisecond * time.Duration(r.refreshMillisecond)),
+		refreshDuration: time.Millisecond * time.Duration(ro.refreshMillisecond),
+		ticker:          time.NewTicker(time.Millisecond * time.Duration(ro.refreshMillisecond)),
 		cleanCh:         make(chan bool),
-		maxSize:         int64(r.maxSize),
+		maxSize:         int64(ro.maxSize),
 		addLock:         sync.Mutex{},
 		refreshLock:     sync.RWMutex{},
-		cache:           make(IOs[I, O], r.maxSize),
-		do:              r.handleFunc,
+		cache:           make(IOs[I, O], ro.maxSize),
+		do:              ro.handleFunc,
 		cw:              castwait.New(),
 		cnt:             new(int64),
+		isEmptyFunc:     ro.isEmptyFunc,
+		emptyOutput:     ro.emptyOutput,
 	}
 	go reduce.daemon()
 	return reduce, nil
@@ -111,6 +121,8 @@ type reduce[I any, O any] struct {
 	do              ReduceHandle[I, O]
 	cw              castwait.Interface
 	cnt             *int64
+	isEmptyFunc     func(I) bool
+	emptyOutput     O
 }
 
 func (r *reduce[I, O]) daemon() {
@@ -132,6 +144,9 @@ func (r *reduce[I, O]) daemon() {
 
 func (r *reduce[I, O]) Do(input I) (O, error) {
 
+	if r.isEmptyFunc != nil && r.isEmptyFunc(input) {
+		return r.emptyOutput, nil
+	}
 	r.addLock.Lock()
 
 	// 读锁保证只上了一把，如果此时正在refresh操作则等待。
