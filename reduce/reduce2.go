@@ -23,6 +23,24 @@ const (
 	DefaultRefreshMillisecond = 1000
 )
 
+type IO[I any, O any] struct {
+	Input  I
+	Output O
+}
+
+type IOs[I any, O any] []*IO[I, O]
+
+func (i IOs[I, O]) GetInputs(size int64) []I {
+	var inputs []I
+	if i == nil {
+		return inputs
+	}
+	for idx := int64(0); idx < size; idx++ {
+		inputs = append(inputs, i[idx].Input)
+	}
+	return inputs
+}
+
 type reduceOptions[I, O any] struct {
 	maxSize            int
 	refreshMillisecond int
@@ -53,24 +71,6 @@ func (r *reduceOptions[I, O]) SetRefreshMillisecond(refreshMillisecond int) *red
 func (r *reduceOptions[I, O]) SetHandleFunc(do ReduceHandle[I, O]) *reduceOptions[I, O] {
 	r.handleFunc = do
 	return r
-}
-
-type IO[I any, O any] struct {
-	Input  I
-	Output O
-}
-
-type IOs[I any, O any] []*IO[I, O]
-
-func (i IOs[I, O]) GetInputs(size int64) []I {
-	var inputs []I
-	if i == nil {
-		return inputs
-	}
-	for idx := int64(0); idx < size; idx++ {
-		inputs = append(inputs, i[idx].Input)
-	}
-	return inputs
 }
 
 func (i IOs[I, O]) SetOutputs(outputs []O) {
@@ -130,7 +130,6 @@ func (r *reduce[I, O]) daemon() {
 	}
 }
 
-// Do 向缓存中增加数据
 func (r *reduce[I, O]) Do(input I) (O, error) {
 
 	r.addLock.Lock()
