@@ -83,29 +83,40 @@ func TestSafeMap_Delete(t *testing.T) {
 
 
 func TestSafeMap_Range(t *testing.T) {
+	// Create a map with just two entries to simplify testing
 	m := ztype.NewSafeMap[string, int]()
 	m.Set("foo", 1)
 	m.Set("bar", 2)
-	m.Set("baz", 3)
 
-	var keys []string
+	// Test that all entries are visited when callback always returns true
+	visitedAll := make(map[string]bool)
 	m.Range(func(key string, value int) bool {
-		keys = append(keys, key)
-		if key == "bar" {
-			return false // break the loop when key == "bar"
-		}
-		return true
+		visitedAll[key] = true
+		return true // continue iteration
 	})
 
-	expectedKeys := []string{"foo", "bar"}
-	if len(keys) != len(expectedKeys) {
-		t.Errorf("expected %d keys, but got %d", len(expectedKeys), len(keys))
+	if len(visitedAll) != 2 {
+		t.Errorf("expected 2 keys to be visited, but got %d", len(visitedAll))
 	}
 
-	for i, expectedKey := range expectedKeys {
-		if keys[i] != expectedKey {
-			t.Errorf("expected key %q, but got %q", expectedKey, keys[i])
-		}
+	if !visitedAll["foo"] || !visitedAll["bar"] {
+		t.Errorf("not all keys were visited: %v", visitedAll)
+	}
+
+	// Test early termination with a new map
+	m2 := ztype.NewSafeMap[string, int]()
+	m2.Set("key1", 1)
+	m2.Set("key2", 2)
+	m2.Set("key3", 3)
+
+	visitCount := 0
+	m2.Range(func(key string, value int) bool {
+		visitCount++
+		return false // stop after first key
+	})
+
+	if visitCount != 1 {
+		t.Errorf("expected iteration to stop after 1 key, but visited %d keys", visitCount)
 	}
 }
 
